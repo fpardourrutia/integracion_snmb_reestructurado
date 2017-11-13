@@ -5,23 +5,10 @@ library("forcats")
 library("RPostgreSQL")
 library("stringi")
 
-
-################################################################################
-# Plan de trabajo
-#################################################################################
-# 1. Migrar la base de datos que tenemos actualmente a la v14.
-# 2. Fusionar todos los conglomerados capturados con los clientes v3 y v4 a la
-# base final v14.
-# 3. Migrar la base de datos resultante a la v15, donde se creará una tabla nueva
-# que albergará la oinformación árboles grandes tomados con el nuevo protocolo de
-# datos (censo).
-# 4. Fusionar todos los conglomerados capturados con los clientes v5 a la base
-# final v15.
-
 # Este script leerá una base en la v12 y la migrará a la v14. Esto es útil puesto
 # que la base final PostgreSQL tendrá que pasar por ese proceso.
 
-conexion <- src_postgres(
+conexion_entrada <- src_postgres(
   dbname = "snmb_development",
   host = "coati",
   port = "5432",
@@ -33,7 +20,7 @@ conexion <- src_postgres(
 # Cabe destacar que los catálogos no son requeridos puesto que se insertaron
 # cuando se creó la base de datos con el esquema v14 (en Web2py), y sólo se
 # agregaron catálogos y a los existentes campos; no hubo modificaciones
-lista_nombres_tablas <- src_tbls(conexion) %>%
+lista_nombres_tablas <- src_tbls(conexion_entrada) %>%
   data_frame(nombres_tablas = .) %>%
   filter(!(nombres_tablas %in% c(
     "spatial_ref_sys",
@@ -43,8 +30,7 @@ lista_nombres_tablas <- src_tbls(conexion) %>%
     "muni_2012gw",
     "metadata_raster",
     "metadata_vector",
-    "taxonomia",
-    ""
+    "taxonomia"
   ))) %>%
   filter(stri_detect_regex(nombres_tablas, "^cat_", negate = TRUE)) %>%
   filter(stri_detect_regex(nombres_tablas, "^auth_", negate = TRUE)) %>%
@@ -55,7 +41,7 @@ names(lista_nombres_tablas) <- lista_nombres_tablas
 # Leyendo las tablas de interésy asignándolas a una lista nombrada:
 
 lista_tablas <- llply(lista_nombres_tablas, function(nombre_tabla){
-  tabla <- tbl(conexion, nombre_tabla) %>%
+  tabla <- tbl(conexion_entrada, nombre_tabla) %>%
     collect(n = Inf)
   return(tabla)
 })
@@ -106,7 +92,7 @@ transecto_muestra_auxiliar <- lista_tablas$transecto_especies_invasoras_muestra 
       # Si encontré la combinación "conglomerado_muestra", "transecto_numero" en
       # la tabla, quiere decir que si hicieron el recorrido, y por tanto, que si
       # existe el transecto
-      existe = TRUE,
+      existe = "T",
       
       # Ordeno por fecha para que los NA's queden al final, y me quedo con el primero.
       # No funcionan los pipes dentro de un do.
@@ -255,30 +241,92 @@ lista_tablas_insertar$archivo_avistamiento_aves <- archivo_avistamiento_aves
 # "Arbol_cuadrante"
 lista_tablas_insertar$arbol_cuadrante <- arbol_cuadrante_nuevo
 
+# Especificando el nuevo orden de la lista (para insertar las tablas en orden
+# y que no se violen restricciones de llaves foráneas)
+
+orden_nuevo_tablas <- c(
+  "conglomerado_muestra",
+  "sitio_muestra",
+  "imagen_referencia_sitio",
+  
+  "camara",
+  "archivo_camara",
+  "imagen_referencia_camara",
+  
+  "grabadora",
+  "archivo_grabadora",
+  "archivo_grabadora_info",
+  "archivo_referencia_grabadora",
+  "imagen_referencia_grabadora",
+  "imagen_referencia_microfonos",
+  
+  "transecto_muestra",
+  "especie_invasora",
+  "archivo_especie_invasora",
+  "huella_excreta",
+  "archivo_huella_excreta",
+  
+  "especie_invasora_extra",
+  "archivo_especie_invasora_extra",
+  
+  "huella_excreta_extra",
+  "archivo_huella_excreta_extra",
+  
+  "especimen_restos_extra",
+  "archivo_especimen_restos_extra",
+  
+  "punto_conteo_aves",
+  "avistamiento_aves",
+  "archivo_avistamiento_aves",
+  
+  "arbol_cuadrante",
+  "transecto_ramas",
+  "rama_1000h",
+  "arbol_transecto",
+  
+  "informacion_epifitas",
+  "punto_carbono",
+  
+  "incendio",
+  "archivo_incendio",
+  "plaga",
+  "archivo_plaga",
+  "impacto_actual"
+  
+  #"archivo_csv"
+)
+
+lista_tablas_insertar_ordenada <- lista_tablas_insertar[orden_nuevo_tablas]
+
 ###########################################################################################
 # Introduciendo las nuevas tablas a la base PostgreSQL (con el esquema v14 ya implementado)
 ###########################################################################################
 
 driver <- dbDriver("PostgreSQL")
-base_output <- dbConnect(drv = driver, dbname = "", port = 5432,
-  host = "", 
-  user = "", password = "")
+base_output <- dbConnect(
+  drv = driver,
+  dbname = "snmb_testing_v14",
+  port = 5432,
+  host = "buho", 
+  user = "postgres",
+  password = "000999000")
 
 # Insertando tablas en el esquema v14
 
-l_ply(1:length(lista_tablas_insertar), function(i){
+l_ply(1:length(lista_tablas_insertar_ordenada), function(i){
   dbWriteTable(
     base_output,
-    names(lista_tablas_insertar)[i],
-    as.data.frame(lista_tablas_insertar[[i]]),
-    overwrite = FALSE, append = FALSE, row.names = 0)
+    names(lista_tablas_insertar_ordenada)[i],
+    as.data.frame(lista_tablas_insertar_ordenada[[i]]),
+    overwrite = FALSE, append = TRUE, row.names = 0)
+  print(names(lista_tablas_insertar_ordenada)[i])
 })
 
 # Actualizando secuencias de llaves autogeneradas:
-l_ply(1:length(lista_tablas_insertar), function(i){
+l_ply(1:length(lista_tablas_insertar_ordenada), function(i){
   # Creando el query
   
-  nombre_tabla <- names(lista_tablas_insertar)[i]
+  nombre_tabla <- names(lista_tablas_insertar_ordenada)[i]
   query <- paste0("SELECT setval('", nombre_tabla,
     "_id_seq', (SELECT MAX(id) FROM ",
     nombre_tabla,
@@ -287,6 +335,7 @@ l_ply(1:length(lista_tablas_insertar), function(i){
   
   # Enviando el query a la base de datos PostgreSQL
   dbGetQuery(base_output, query)
+  print(nombre_tabla)
 })
 
 dbDisconnect(base_output)
