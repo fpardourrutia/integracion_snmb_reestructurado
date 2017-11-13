@@ -15,4 +15,18 @@ __"Arbol_cuadrante"__: al analizar los protocolos de campo (manuales) correspond
 
 Con respecto a los datos contenidos en la base, antes (esquema v12) se declaraban 8 árboles por sitio con el campo "existe" siempre no vacío. Ahora (esquema v14) se declaran con el campo existe vacío. De esta manera, es posible diferenciar cuáles árboles fueron muestreados con qué protocolo de campo.
 
+# Plan de trabajo:
+
+1. Crear nuevas funciones para integrar el cliente v3 (esquema v10) -> base postgres esquema v12 (reestructuración).
+2. Crear nuevas funciones para integrar el cliente v4 (esquema v12) -> base postgres esquema v12
+3. Crear nuevas funciones para integrar el cliente v5 (esquema v13 y v14) -> base postgres esquema v14.
+4. Migrar de la base postgres v12 a la base postgres v14 (migración temporal.
+
+# Procedimiento de integracion de datos
+
+1. Integrar los datos de CONANP y FMCN tomados con el cliente v5 a la base temporal postgres v14.
+2. Cuando lleguen los datos de CONAFOR tomados con el cliente v3 y v4, integrarlos a la base postgres esquema v12
+3. Realizar la migración final a la base postgres v14 definitiva.
+4. Integrar los datos de CONANP/FMCN/CONAFOR tomados con el cliente v5 a la base postgres v14 definitiva.
+
 
