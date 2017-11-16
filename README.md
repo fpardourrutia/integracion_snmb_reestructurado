@@ -44,7 +44,7 @@ db = DAL('postgres://usuario:contrasena@localhost/nombre_base', db_codec='UTF-8'
 Nota: `migrate = False` se utiliza para bases de datos preexistentes (por ejemplo, que hayan sido pobladas mediante algún ETL,
 antes de utilizarlas de esta manera.
 
-7. Encender la aplicación de Web2py para crear las tablas en la base de datos PostgreSQL, y popular los catálogos:
+7. Encender la aplicación de Web2py para crear las tablas en la base de datos PostgreSQL, y popular los catálogos. (Si no existe, crear la carpeta "web2py/applications/fusionador_v3_hotfix/databases" antes de correr el siguiente código):
 
 ```
 > # Crear nuevas tablas
