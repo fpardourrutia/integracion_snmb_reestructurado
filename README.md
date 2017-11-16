@@ -17,7 +17,7 @@ Con respecto a los datos contenidos en la base, antes (esquema v12) se declaraba
 
 # Implementación del proceso de migración.
 
-0. Descargar el código fuente de Web2py v2.11.1 (commit [01474c9](https://github.com/web2py/web2py/commit/01474c99b01eb422a413b5de322e5d5be611b6b2))
+0. Descargar el código fuente de Web2py v2.11.2 (commit [236fdcf](https://github.com/web2py/web2py/commit/236fdcfafc60436c23d0ed5ce6e04eb1e1cde4b1))
 1. Descargar el "fusionador_v3_hotfix" (commit [9687c97](https://github.com/fpardourrutia/fusionador_snmb/commit/9687c9764d2430f7bd153aa3b1688058742b5bb6))
 
 # Plan de trabajo:
