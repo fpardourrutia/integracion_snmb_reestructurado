@@ -25,8 +25,7 @@ Con respecto a los datos contenidos en la base, antes (esquema v12) se declaraba
 > pip install psycopg2
 ```
 
-3. Descargar el código fuente de Web2py v2.11.2 (commit [236fdcf](https://github.com/web2py/web2py/commit/236fdcfafc60436c23d0ed5ce6e04eb1e1cde4b1)). É
-Descargar el código fuente de Web2py v2.11.2 (commit [236fdcf](https://github.com/web2py/web2py/commit/236fdcfafc60436c23d0ed5ce6e04eb1e1cde4b1)) este utiliza el python local para funcionar.
+3. Descargar el código fuente de Web2py v2.11.2 (commit [236fdcf](https://github.com/web2py/web2py/commit/236fdcfafc60436c23d0ed5ce6e04eb1e1cde4b1)). Este utiliza el python local para funcionar.
 4. Descargar el "fusionador_v3_hotfix" (commit [9687c97](https://github.com/fpardourrutia/fusionador_snmb/commit/9687c9764d2430f7bd153aa3b1688058742b5bb6)) en la carpeta de "applications" dentro de Web2py.
 5. Abrir la terminal para crear la base de datos postgres:
 ```
@@ -44,6 +43,15 @@ db = DAL('postgres://usuario:contrasena@localhost/nombre_base', db_codec='UTF-8'
 ```
 Nota: `migrate = False` se utiliza para bases de datos preexistentes (por ejemplo, que hayan sido pobladas mediante algún ETL,
 antes de utilizarlas de esta manera.
+
+7. Encender la aplicación de Web2py para crear las tablas en la base de datos PostgreSQL, y popular los catálogos:
+
+```
+> # Crear nuevas tablas
+> # -M es para cargar los modelos de la aplicación utilizada.
+> python web2py/web2py.py -S fusionador_v3_hotfix -M
+
+```
 
 # Plan de trabajo:
 
