@@ -15,10 +15,33 @@ __"Arbol_cuadrante"__: al analizar los protocolos de campo (manuales) correspond
 
 Con respecto a los datos contenidos en la base, antes (esquema v12) se declaraban 8 árboles por sitio con el campo "existe" siempre no vacío. Ahora (esquema v14) se declaran con el campo existe vacío. De esta manera, es posible diferenciar cuáles árboles fueron muestreados con qué protocolo de campo.
 
-# Implementación del proceso de migración.
+### Requerimientos para el proceso de migración.
 
-0. Descargar el código fuente de Web2py v2.11.2 (commit [236fdcf](https://github.com/web2py/web2py/commit/236fdcfafc60436c23d0ed5ce6e04eb1e1cde4b1))
-1. Descargar el "fusionador_v3_hotfix" (commit [9687c97](https://github.com/fpardourrutia/fusionador_snmb/commit/9687c9764d2430f7bd153aa3b1688058742b5bb6))
+1. [Instalar PostgreSQL con ayuda de Homebrew](https://marcinkubala.wordpress.com/2013/11/11/postgresql-on-os-x-mavericks/).
+2. Instalar la librería de Python [psycopg2](http://initd.org/psycopg/):
+```
+> pip install psycopg2
+```
+
+3. Descargar el código fuente de Web2py v2.11.2 (commit [236fdcf](https://github.com/web2py/web2py/commit/236fdcfafc60436c23d0ed5ce6e04eb1e1cde4b1)). É
+Descargar el código fuente de Web2py v2.11.2 (commit [236fdcf](https://github.com/web2py/web2py/commit/236fdcfafc60436c23d0ed5ce6e04eb1e1cde4b1)) este utiliza el python local para funcionar.
+4. Descargar el "fusionador_v3_hotfix" (commit [9687c97](https://github.com/fpardourrutia/fusionador_snmb/commit/9687c9764d2430f7bd153aa3b1688058742b5bb6)) en la carpeta de "applications" dentro de Web2py.
+5. Abrir la terminal para crear la base de datos postgres:
+```
+> cd /usr/local/var
+> #creando la base de datos:
+> initdb nombre_base
+> #encendiendo el servidor
+> postgres -D postgres
+> #registrándola adecuadamente
+> createdb nombre_base
+```
+6. Abrir el archivo: *fusionador_postgres/models/00_0_db_f.py*, y revisar que la siguiente línea esté correcta:
+```
+db = DAL('postgres://usuario:contrasena@localhost/nombre_base', db_codec='UTF-8',check_reserved=['all'], migrate = True)
+```
+Nota: `migrate = False` se utiliza para bases de datos preexistentes (por ejemplo, que hayan sido pobladas mediante algún ETL,
+antes de utilizarlas de esta manera.
 
 # Plan de trabajo:
 
