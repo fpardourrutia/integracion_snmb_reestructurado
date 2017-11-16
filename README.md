@@ -15,6 +15,11 @@ __"Arbol_cuadrante"__: al analizar los protocolos de campo (manuales) correspond
 
 Con respecto a los datos contenidos en la base, antes (esquema v12) se declaraban 8 árboles por sitio con el campo "existe" siempre no vacío. Ahora (esquema v14) se declaran con el campo existe vacío. De esta manera, es posible diferenciar cuáles árboles fueron muestreados con qué protocolo de campo.
 
+# Implementación del proceso de migración.
+
+0. Descargar la versión de desarrollador de Web2py 
+1. Descargar el "fusionador_v3_hotfix" (commit [9687c97](https://github.com/fpardourrutia/fusionador_snmb/commit/9687c9764d2430f7bd153aa3b1688058742b5bb6))
+
 # Plan de trabajo:
 
 1. Crear nuevas funciones para integrar el cliente v3 (esquema v10) -> base postgres esquema v12 (reestructuración).
