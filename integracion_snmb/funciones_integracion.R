@@ -145,13 +145,13 @@ revisar_esquemas <- function(ruta_carpeta_entrada, ruta_carpeta_salida){
   # Corriendo cada comando de Bash:
   l_ply(codigo_bash, system)
   
-  print(mapeo_rutas_entrada_salida)
-  print("4")
   # Corriendo la función "revisar_esquema()" para todas las "rutas_salida" para
   # ver el esquema de cada base en la carpeta de salida.
   revision_esquemas_carpeta_salida <-ldply(
     mapeo_rutas_entrada_salida$ruta_salida, function(ruta){
+      print(6)###
       conexion_bd <- src_sqlite(ruta)
+      print(7)###
       revisar_esquema(conexion_bd)
     })
   
