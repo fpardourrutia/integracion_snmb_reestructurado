@@ -23,7 +23,7 @@ library("readr")
 library("readxl")
 
 # Leyendo parámeteros de configuración
-source("config.R")
+#source("config.R")
 
 # Leyendo dependencias por medio de una búsqueda recursiva en la sección de
 # "dependencias"

@@ -1,4 +1,5 @@
 #!/usr/bin/env Rscript
+source("funciones_integracion.R")
 
 # En este script se van llamado, en orden, las funciones definidas en
 # "funciones_integracion.R", con el fin de llevar a cabo el proceso de integración,
