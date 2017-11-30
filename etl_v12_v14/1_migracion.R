@@ -10,16 +10,16 @@ library("stringi")
 
 conexion_entrada <- src_postgres(
   dbname = "snmb_development",
-  host = "coati",
+  host = "buho",
   port = "5432",
   user = "postgres",
-  password = "000999000."
+  password = "000999000"
 )
 
 # Enlistando las tablas de la base v12, y eliminando tablas no requeridas.
 # Cabe destacar que los catálogos no son requeridos puesto que se insertaron
 # cuando se creó la base de datos con el esquema v14 (en Web2py), y sólo se
-# agregaron catálogos y a los existentes campos; no hubo modificaciones
+# agregaron registros a los catálogos existentes: no hubo modificaciones
 lista_nombres_tablas <- src_tbls(conexion_entrada) %>%
   data_frame(nombres_tablas = .) %>%
   filter(!(nombres_tablas %in% c(
@@ -30,7 +30,8 @@ lista_nombres_tablas <- src_tbls(conexion_entrada) %>%
     "muni_2012gw",
     "metadata_raster",
     "metadata_vector",
-    "taxonomia"
+    "taxonomia",
+    "archivo_csv"
   ))) %>%
   filter(stri_detect_regex(nombres_tablas, "^cat_", negate = TRUE)) %>%
   filter(stri_detect_regex(nombres_tablas, "^auth_", negate = TRUE)) %>%
@@ -38,7 +39,7 @@ lista_nombres_tablas <- src_tbls(conexion_entrada) %>%
 
 names(lista_nombres_tablas) <- lista_nombres_tablas
 
-# Leyendo las tablas de interésy asignándolas a una lista nombrada:
+# Leyendo las tablas de interés y asignándolas a una lista nombrada:
 
 lista_tablas <- llply(lista_nombres_tablas, function(nombre_tabla){
   tabla <- tbl(conexion_entrada, nombre_tabla) %>%
@@ -219,9 +220,42 @@ arbol_cuadrante_nuevo <- lista_tablas$arbol_cuadrante %>%
     forma_vida = ""
   )
 
-###########################################################################################
+###################################################################################
+# Campos agregados por Omar: 
+###################################################################################
+
+conglomerado_muestra_nuevo <- lista_tablas$conglomerado_muestra %>%
+  select(-nombre_anp)
+
+conglomerado_muestra_nombre_anp <- lista_tablas$conglomerado_muestra %>%
+  select(
+    conglomerado_muestra_id = id,
+    nombre_anp
+  )
+  
+
+archivo_camara_nuevo <- lista_tablas$archivo_camara %>%
+  select(
+    -nombre_cientifico_anotador,
+    -primera_anotacion,
+    -id_observacion,
+    -fecha_inclusion,
+    -fecha_ultima_modificacion
+  )
+
+archivo_camara_metadatos_observacion <- lista_tablas$archivo_camara %>%
+  select(
+    archivo_camara_id = id,
+    nombre_cientifico_anotador,
+    primera_anotacion,
+    id_observacion,
+    fecha_inclusion,
+    fecha_ultima_modificacion
+  )
+
+##################################################################################
 # Actualizando la lista de tablas a insertar
-###########################################################################################
+##################################################################################
 
 lista_tablas_insertar <- lista_tablas
 
@@ -240,6 +274,13 @@ lista_tablas_insertar$archivo_avistamiento_aves <- archivo_avistamiento_aves
 
 # "Arbol_cuadrante"
 lista_tablas_insertar$arbol_cuadrante <- arbol_cuadrante_nuevo
+
+# Tablas modificadas por Omar:
+lista_tablas_insertar$conglomerado_muestra <- conglomerado_muestra_nuevo
+lista_tablas_insertar$conglomerado_muestra_nombre_anp <- conglomerado_muestra_nombre_anp
+
+lista_tablas_insertar$archivo_camara <- archivo_camara_nuevo
+lista_tablas_insertar$archivo_camara_metadatos_observacion <- archivo_camara_metadatos_observacion
 
 # Especificando el nuevo orden de la lista (para insertar las tablas en orden
 # y que no se violen restricciones de llaves foráneas)
@@ -291,19 +332,20 @@ orden_nuevo_tablas <- c(
   "archivo_incendio",
   "plaga",
   "archivo_plaga",
-  "impacto_actual"
+  "impacto_actual",
   
-  #"archivo_csv"
+  "conglomerado_muestra_nombre_anp",
+  "archivo_camara_metadatos_observacion"
 )
 
 lista_tablas_insertar_ordenada <- lista_tablas_insertar[orden_nuevo_tablas]
 
-###########################################################################################
+############################################################################################
 # Introduciendo las nuevas tablas a la base PostgreSQL (con el esquema v14 ya implementado)
-###########################################################################################
+############################################################################################
 
 driver <- dbDriver("PostgreSQL")
-base_output <- dbConnect(
+conexion_salida <- dbConnect(
   drv = driver,
   dbname = "snmb_testing_v14",
   port = 5432,
@@ -311,11 +353,53 @@ base_output <- dbConnect(
   user = "postgres",
   password = "000999000")
 
-# Insertando tablas en el esquema v14
+#### Creando tablas con la información introducida por Omar:
+
+# CREATE TABLE public.conglomerado_muestra_nombre_anp (
+#   id SERIAL PRIMARY KEY,
+#   conglomerado_muestra_id integer REFERENCES conglomerado_muestra(id) ON DELETE CASCADE,
+#   nombre_anp varchar(512) NULL
+# )
+
+query_crear_conglomerado_muestra_nombre_anp <-
+  paste0(
+    "CREATE TABLE public.conglomerado_muestra_nombre_anp (",
+    "id SERIAL PRIMARY KEY, ",
+    "conglomerado_muestra_id integer REFERENCES conglomerado_muestra(id) ON DELETE CASCADE, ",
+    "nombre_anp varchar(512) NULL)"
+  )
+
+dbGetQuery(conexion_salida, query_crear_conglomerado_muestra_nombre_anp)
+
+# CREATE TABLE public.archivo_camara_metadatos_observacion (
+#   id SERIAL PRIMARY KEY,
+#   archivo_camara_id integer REFERENCES archivo_camara(id) ON DELETE CASCADE,
+#   nombre_cientifico_anotador varchar(255) NULL,
+#   primera_anotacion bool NULL,
+#   id_observacion int4 NULL,
+#   fecha_inclusion timestamp NULL DEFAULT now(),
+#   fecha_ultima_modificacion timestamp NULL
+# )
+
+query_crear_archivo_camara_metadatos_observacion <- 
+  paste0(
+    "CREATE TABLE public.archivo_camara_metadatos_observacion (",
+    "id SERIAL PRIMARY KEY, ",
+    "archivo_camara_id integer REFERENCES archivo_camara(id) ON DELETE CASCADE, ",
+    "nombre_cientifico_anotador varchar(255) NULL, ",
+    "primera_anotacion bool NULL, ",
+    "id_observacion int4 NULL, ",
+    "fecha_inclusion timestamp NULL DEFAULT now(), ",
+    "fecha_ultima_modificacion timestamp NULL)"
+  )
+
+dbGetQuery(conexion_salida, query_crear_archivo_camara_metadatos_observacion)
+
+#### Insertando tablas en el esquema v14
 
 l_ply(1:length(lista_tablas_insertar_ordenada), function(i){
   dbWriteTable(
-    base_output,
+    conexion_salida,
     names(lista_tablas_insertar_ordenada)[i],
     as.data.frame(lista_tablas_insertar_ordenada[[i]]),
     overwrite = FALSE, append = TRUE, row.names = 0)
@@ -333,15 +417,10 @@ l_ply(1:length(lista_tablas_insertar_ordenada), function(i){
     "));"
     )
   
-  # Enviando el query a la base de datos PostgreSQL
-  dbGetQuery(base_output, query)
+  # Enviando el query a la base de datos PostgreSQL. Notar que si una tabla
+  # no tiene secuencia asociada entonces no se actualiza nada
+  dbGetQuery(conexion_salida, query)
   print(nombre_tabla)
 })
 
-dbDisconnect(base_output)
-
-
-
-
-
-
+dbDisconnect(conexion_salida)

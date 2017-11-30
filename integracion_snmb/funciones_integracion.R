@@ -22,7 +22,7 @@ library("dplyr")
 library("readr")
 library("readxl")
 
-# Leyendo parámteros de configuración
+# Leyendo parámeteros de configuración
 source("config.R")
 
 # Leyendo dependencias por medio de una búsqueda recursiva en la sección de
