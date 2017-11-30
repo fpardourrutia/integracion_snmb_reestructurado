@@ -48,13 +48,14 @@ library("readxl")
 revisar_esquema <- function(conexion_bd){
   
   tablas_bd <- src_tbls(conexion_bd)
-  
+  print("1") ###
   # Revisando si la base de datos contiene la tabla "Informacion_epifitas"
   if("Informacion_epifitas" %in% tablas_bd){
     columnas_tabla_informacion_epifitas <- colnames(tbl(conexion_bd, "Informacion_epifitas"))
   } else{
     columnas_tabla_informacion_epifitas <- NULL
   }
+  print("2") ###
   
   if("Transecto_muestra" %in% tablas_bd){
     version_cliente <- 5
@@ -83,6 +84,7 @@ revisar_esquema <- function(conexion_bd){
     version_esquema <- NA
     informacion_adicional <- NA
   }
+  print("3") ###
   
   return(
     data_frame(
