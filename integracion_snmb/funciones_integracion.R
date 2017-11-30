@@ -119,7 +119,6 @@ revisar_esquema <- function(conexion_bd){
 
 revisar_esquemas <- function(ruta_carpeta_entrada, ruta_carpeta_salida){
   
-  print("1") ###
   # Obteniendo las rutas de cada base en la carpeta de entrada
   rutas_bases_sqlite <- list.files(
     ruta_carpeta_entrada,
@@ -128,7 +127,6 @@ revisar_esquemas <- function(ruta_carpeta_entrada, ruta_carpeta_salida){
     full.names = TRUE
   )
   
-  print("2")
   # Creando data frame que expresa la relación entre "ruta_entrada" y "ruta_salida"
   mapeo_rutas_entrada_salida <- data_frame(
     ruta_entrada = rutas_bases_sqlite
@@ -137,7 +135,6 @@ revisar_esquemas <- function(ruta_carpeta_entrada, ruta_carpeta_salida){
       ruta_salida = paste0(ruta_carpeta_salida, "/storage_", 1:nrow(.), ".sqlite")
     )
   
-  print("3")
   # Creando el código de Bash para realizar la migración de bases
   codigo_bash <- mapeo_rutas_entrada_salida %>%
     mutate(
@@ -148,6 +145,7 @@ revisar_esquemas <- function(ruta_carpeta_entrada, ruta_carpeta_salida){
   # Corriendo cada comando de Bash:
   l_ply(codigo_bash, system)
   
+  print(mapeo_rutas_entrada_salida)
   print("4")
   # Corriendo la función "revisar_esquema()" para todas las "rutas_salida" para
   # ver el esquema de cada base en la carpeta de salida.
@@ -157,7 +155,6 @@ revisar_esquemas <- function(ruta_carpeta_entrada, ruta_carpeta_salida){
       revisar_esquema(conexion_bd)
     })
   
-  print("5")
   # Generando el data frame resumen:
   df_resumen <- mapeo_rutas_entrada_salida %>%
     inner_join(revision_esquemas_carpeta_salida, by = c("ruta_salida" = "ruta"))
