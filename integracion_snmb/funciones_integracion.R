@@ -34,10 +34,8 @@ library("readxl")
 ################################################################################
 
 # La siguiente función revisa la versión del cliente de captura y del esquema
-# de la base de datos del SNMB (cuando apliquen).
-# Está pensado para una base de datos sqlite, pero en realidad también funciona
-# para PostgreSQL y MySQL:
-# conexion_bd: objeto de conexión a la base de datos:
+# de una base de datos sqlite del SNMB.
+# ruta_base: ruta de la base de datos sqlite de interés
 # resultado de src_sqlite(ruta_base), src_postgres() o src_mysql()
 # La función regresa un data frame  que contiene la ruta de la base de datos,
 # y las versiones del cliente y del esquema correspondientes.
@@ -45,9 +43,11 @@ library("readxl")
 # Esta función no tiene dependencias externas, ya que para usar éstas se requiere
 # de saber la versión del esquema de determinada base de datos.
 
-revisar_esquema <- function(conexion_bd){
+revisar_esquema <- function(ruta_base){
   
+  conexion_bd <- src_sqlite(ruta_base)
   tablas_bd <- src_tbls(conexion_bd)
+  
   # Revisando si la base de datos contiene la tabla "Informacion_epifitas"
   if("Informacion_epifitas" %in% tablas_bd){
     columnas_tabla_informacion_epifitas <- colnames(tbl(conexion_bd, "Informacion_epifitas"))
@@ -149,10 +149,7 @@ revisar_esquemas <- function(ruta_carpeta_entrada, ruta_carpeta_salida){
   # ver el esquema de cada base en la carpeta de salida.
   revision_esquemas_carpeta_salida <-ldply(
     mapeo_rutas_entrada_salida$ruta_salida, function(ruta){
-      print(6)###
-      conexion_bd <- src_sqlite(ruta)
-      print(7)###
-      revisar_esquema(conexion_bd)
+      revisar_esquema(ruta)
     })
   
   # Generando el data frame resumen:
