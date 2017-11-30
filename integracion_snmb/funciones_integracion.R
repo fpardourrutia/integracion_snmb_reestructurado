@@ -28,8 +28,8 @@ library("readxl")
 # Leyendo dependencias por medio de una búsqueda recursiva en la sección de
 # "dependencias"
 
-list.files(ruta_dependencias, recursive = TRUE, full.names = TRUE, pattern = ".R$") %>%
-  l_ply(source)
+#list.files(ruta_dependencias, recursive = TRUE, full.names = TRUE, pattern = ".R$") %>%
+#  l_ply(source)
 
 ################################################################################
 
