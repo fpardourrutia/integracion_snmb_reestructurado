@@ -23,20 +23,19 @@ library("readr")
 library("readxl")
 
 # Leyendo parámeteros de configuración
-#source("config.R")
+source("../config/config_integracion_snmb.R")
 
 # Leyendo dependencias por medio de una búsqueda recursiva en la sección de
 # "dependencias"
 
-#list.files(ruta_dependencias, recursive = TRUE, full.names = TRUE, pattern = ".R$") %>%
-#  l_ply(source)
+list.files(ruta_dependencias, recursive = TRUE, full.names = TRUE, pattern = ".R$") %>%
+  l_ply(source)
 
 ################################################################################
 
 # La siguiente función revisa la versión del cliente de captura y del esquema
 # de una base de datos sqlite del SNMB.
 # ruta_base: ruta de la base de datos sqlite de interés
-# resultado de src_sqlite(ruta_base), src_postgres() o src_mysql()
 # La función regresa un data frame  que contiene la ruta de la base de datos,
 # y las versiones del cliente y del esquema correspondientes.
 
@@ -149,7 +148,18 @@ revisar_esquemas <- function(ruta_carpeta_entrada, ruta_carpeta_salida){
   # ver el esquema de cada base en la carpeta de salida.
   revision_esquemas_carpeta_salida <-ldply(
     mapeo_rutas_entrada_salida$ruta_salida, function(ruta){
-      revisar_esquema(ruta)
+      
+      # Previniendo que truene si no puede leer la base de datos
+      tryCatch(revisar_esquema(ruta),
+        error = function(e){
+          resultado <- data_frame(
+            ruta = ruta,
+            version_cliente = NA,
+            version_esquema = NA,
+            informacion_adicional = "No es una base de datos"
+          )
+          return(resultado)
+        })
     })
   
   # Generando el data frame resumen:
@@ -163,8 +173,10 @@ revisar_esquemas <- function(ruta_carpeta_entrada, ruta_carpeta_salida){
 ################################################################################
 
 # La siguiente función toma todas las bases de datos en una misma carpeta, revisa
-# que tengan exactamente las mismas especificaciones y en caso afirmativo, procede
-# a fusionarlas utilizando el cliente y fusionador correspondientes.
+# que correspondan al mismo fusionador (utilizando el archivo especificado en:
+# config_integracion_snmb::ruta_archivo_esquemas_clientes_fusionadores
+# y en caso afirmativo, procede a fusionarlas utilizando el cliente y fusionador
+# correspondientes.
 
 # Entradas:
 # ruta_carpeta_entrada: ruta a la carpeta de entrada que contiene las bases de
