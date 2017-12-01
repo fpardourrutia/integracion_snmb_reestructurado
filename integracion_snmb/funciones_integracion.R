@@ -146,9 +146,11 @@ revisar_esquemas <- function(ruta_carpeta_entrada, ruta_carpeta_salida){
   
   # Corriendo la función "revisar_esquema()" para todas las "rutas_salida" para
   # ver el esquema de cada base en la carpeta de salida.
+  print(1)
   revision_esquemas_carpeta_salida <-ldply(
     mapeo_rutas_entrada_salida$ruta_salida, function(ruta){
       
+      print(2)
       # Previniendo que truene si no puede leer la base de datos
       tryCatch(revisar_esquema(ruta),
         error = function(e){
