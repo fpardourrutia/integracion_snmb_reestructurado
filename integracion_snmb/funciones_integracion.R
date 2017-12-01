@@ -137,7 +137,7 @@ revisar_esquemas <- function(ruta_carpeta_entrada, ruta_carpeta_salida){
   # Creando el código de Bash para realizar la migración de bases
   codigo_bash <- mapeo_rutas_entrada_salida %>%
     mutate(
-      codigo = paste0('cp ', ruta_entrada, ' ', ruta_salida, '')
+      codigo = paste0('cp "', ruta_entrada, '" "', ruta_salida, '"')
     ) %>%
     '$'(codigo) 
   
@@ -146,11 +146,9 @@ revisar_esquemas <- function(ruta_carpeta_entrada, ruta_carpeta_salida){
   
   # Corriendo la función "revisar_esquema()" para todas las "rutas_salida" para
   # ver el esquema de cada base en la carpeta de salida.
-  print(1)
   revision_esquemas_carpeta_salida <-ldply(
     mapeo_rutas_entrada_salida$ruta_salida, function(ruta){
-      
-      print(2)
+      print(paste0("Leyendo base:", ruta))
       # Previniendo que truene si no puede leer la base de datos
       tryCatch(revisar_esquema(ruta),
         error = function(e){
