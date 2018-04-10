@@ -2,9 +2,9 @@
 
 # 1. Copiar las bases de datos de una carpeta en LUSTRE a una externa, con el fin
 # de poder acceder a ellas. De cada base copiada, revisar el esquema / versión del
-# ncliente, etc... para saber qué versiones de las herramientas usar para el
+# cliente, etc... para saber qué versiones de las herramientas usar para el
 # proceso de integración.
-# 3. Crear manualmente carpetas de bases de datos que utilizarán las mismas
+# 2. Crear manualmente carpetas de bases de datos que utilizarán las mismas
 # herramientas. Esto es manual, puesto que otorga mayor flexibilidad en casos
 # extremos (por ejemplo, no sabemos cómo vendrán los datos que entregará Belinda
 # de CONAFOR).
@@ -12,6 +12,8 @@
 # a una carpeta especificada (posiblemente una subcarpeta de la anterior).
 # 5. Enviar una copia de la base de datos a una carpeta específica, y eliminar los
 # duplicados de esta última.
+
+# Nota: todas las rutas utilizadas en este archivo serán relativas a este mismo.
 
 ################################################################################
 
@@ -35,10 +37,15 @@ list.files(ruta_dependencias, recursive = TRUE, full.names = TRUE, pattern = ".R
 
 # La siguiente función revisa la versión del cliente de captura y del esquema
 # de una base de datos sqlite del SNMB.
+
+# Entradas:
 # ruta_base: ruta de la base de datos sqlite de interés
+
+# Salidas:
 # La función regresa un data frame  que contiene la ruta de la base de datos,
 # y las versiones del cliente y del esquema correspondientes.
 
+# Dependencias:
 # Esta función no tiene dependencias externas, ya que para usar éstas se requiere
 # de saber la versión del esquema de determinada base de datos.
 
@@ -96,12 +103,16 @@ revisar_esquema <- function(ruta_base){
 
 # La siguiente función sirve para revisar las versiones del cliente y del esquema
 # para todas las bases con terminación ".sqlite" dentro de una carpeta:
-# ruta_carpeta_entrada: la ruta hacia una carpeta que contiene archivos con
-# terminación ".sqlite"
-# ruta_carpeta_salida: la ruta hacia una carpeta donde se guardarán las bases
-# con el fin de poder acceder a ellas (no en LUSTRE)
 
-# La función:
+# Entradas:
+# ruta_carpeta_entrada: la ruta hacia una carpeta que contiene archivos con
+#   terminación ".sqlite"
+# ruta_carpeta_salida/nombre_carpeta_bd_agrupadas: la ruta hacia una carpeta
+#   donde se guardarán las bases con el fin de poder acceder a ellas (no en LUSTRE)
+# nombre_archivo_revision_bd: nombre del archivo que contiene la revisión de las
+#   bases de datos copiadas en la ruta anterior
+
+# Salidas:
 # 1. Copia los archivos con terminación ".sqlite" que se encuentran en una carpeta
 # de entrada (posiblemente dentro de subcarpetas) a una carpeta de salida.
 # 2. Crea un CSV que contiene la siguiente información:
@@ -113,10 +124,10 @@ revisar_esquema <- function(ruta_base){
 # Dependencias:
 # revisar_esquema()
 
-# prueba:
-#Rscript script.R "~/Desktop" "~/Desktop/conabio/revisar_bd_sqlite/prueba_mover_bd/"
-
-revisar_esquemas <- function(ruta_carpeta_entrada, ruta_carpeta_salida){
+revisar_esquemas <- function(ruta_carpeta_entrada, ruta_carpeta_salida,
+  nombre_carpeta_bd_agrupadas = "1_bases_agrupadas",
+  nombre_archivo_revision_bd = "archivo_revision_bd"
+  ){
   
   # Obteniendo las rutas de cada base en la carpeta de entrada
   rutas_bases_sqlite <- list.files(
@@ -126,15 +137,22 @@ revisar_esquemas <- function(ruta_carpeta_entrada, ruta_carpeta_salida){
     full.names = TRUE
   )
   
+  # Creando carpeta de salida:
+  dir.create(ruta_carpeta_salida)
+  
+  # Creando carpeta para agrupar las bases de datos:
+  ruta_carpeta_bd_agrupadas <- paste0(ruta_carpeta_salida, "/", nombre_carpeta_bd_agrupadas)
+  dir.create(ruta_carpeta_bd_agrupadas)
+  
   # Creando data frame que expresa la relación entre "ruta_entrada" y "ruta_salida"
   mapeo_rutas_entrada_salida <- data_frame(
     ruta_entrada = rutas_bases_sqlite
   ) %>%
     mutate(
-      ruta_salida = paste0(ruta_carpeta_salida, "/storage_", 1:nrow(.), ".sqlite")
+      ruta_salida = paste0(ruta_carpeta_bd_agrupadas, "/storage_", 1:nrow(.), ".sqlite")
     )
   
-  # Creando el código de Bash para realizar la migración de bases
+  # Creando el código de Bash para realizar la copia de las bases
   codigo_bash <- mapeo_rutas_entrada_salida %>%
     mutate(
       codigo = paste0('cp "', ruta_entrada, '" "', ruta_salida, '"')
@@ -163,11 +181,88 @@ revisar_esquemas <- function(ruta_carpeta_entrada, ruta_carpeta_salida){
     })
   
   # Generando el data frame resumen:
-  df_resumen <- mapeo_rutas_entrada_salida %>%
+  df_archivo_revision_bd <- mapeo_rutas_entrada_salida %>%
     inner_join(revision_esquemas_carpeta_salida, by = c("ruta_salida" = "ruta"))
   
   # Guardando el data frame resumen en un CSV
-  write_csv(df_resumen, paste0(ruta_carpeta_salida, "/resumen_migracion.csv"))
+  write_csv(df_archivo_revision_bd,
+    paste0(ruta_carpeta_bd_agrupadas, "/", nombre_archivo_revision_bd, ".csv"))
+}
+
+################################################################################
+
+# La siguiente función lee los registros del archivo "nombre_archivo_revision_bd"
+# y separa las bases dependiendo de la versión del fusionador que les corresponde.
+
+# Entradas:
+# ruta_carpeta_trabajo: la ruta hacia la carpeta que contiene la carpeta
+#   "nombre_carpeta_bd_agrupadas", y donde se almacenará la carpeta
+#   "nombre_carpeta_bd_clasificadas"
+# nombre_carpeta_bd_agrupadas: nombre de la carpeta que contiene las bases de
+#   datos agrupadas, así como el archivo de revisión.
+# nombre_carpeta_bd_clasificadas: nombre de la carpeta donde se almacenarán las
+#   bases de datos clasificadas.
+# nombre_archivo_revision_bd: nombre del archivo generado por la función
+#   "revisar_esquemas()", y que se encuentra almacenado en "nombre_carpeta_bd_agrupadas"
+#   ruta_archivo_esquemas_clientes_fusionadores: ruta al archivo de Excel que
+# especifica los fusionadores correspondientes a cada esquema del cliente
+# (el valor default está en el archivo de configuración)
+
+# Salidas:
+# Las bases de datos contenidas en la carpeta de revisión serán clasificadas en
+# carpetas de acuerdo al fusionador que les corresponde, en carpetas nombradas
+# adecuadamente. Para ello se utilizará el archivo:
+# "ruta_archivo_esquemas_clientes_fusionadores"
+
+clasifica_bases <- function(
+  ruta_carpeta_trabajo,
+  nombre_carpeta_bd_agrupadas = "1_bases_agrupadas",
+  nombre_carpeta_bd_clasificadas = "2_bases_clasificadas",
+  nombre_archivo_revision_bd = "archivo_revision_bd",
+  ruta_archivo_esquemas_clientes_fusionadores = ruta_archivo_esquemas_clientes_fusionadores){
+  
+  # Obteniendo varias rutas que son necesarias
+  ruta_carpeta_bd_agrupadas <- paste0(ruta_carpeta_trabajo, "/", nombre_carpeta_bd_agrupadas)
+  ruta_carpeta_bd_clasificadas <- paste0(ruta_carpeta_trabajo, "/", nombre_carpeta_bd_clasificadas)
+  ruta_archivo_revision_bd <- paste0(ruta_carpeta_bd_agrupadas, "/", nombre_archivo_revision_bd)
+  
+  # Creando carpeta de bases de datos clasificadas:
+  dir.create(ruta_carpeta_bd_clasificadas)
+  
+  # Leyendo los archivos necesarios:
+  df_archivo_revision_bd <- read_csv(ruta_archivo_revision_bd)
+  df_esquemas_clientes_fusionadores <- read_excel(ruta_archivo_esquemas_clientes_fusionadores)
+  
+  # Haciendo el join de ambos archivos, para asignar a cada cliente su fusionador
+  # correspondiente. Cabe destacar que serán ignorados aquellos archivos que no
+  # sean una base de datos proveniente de algún cliente de captura.
+  mapeo_rutas_entrada_salida <- df_archivo_revision_bd %>%
+    inner_join(df_esquemas_clientes_fusionadores, by = c(
+      "version_esquema",
+      "informacion_adicional"
+    )) %>%
+    mutate(
+      ruta_entrada = ruta_salida,
+      ruta_salida = paste0(ruta_carpeta_bd_clasificadas,
+        "/", fusionador_correspondiente,
+        "/", basename(ruta_entrada))
+    )
+  
+  # Creando las subcarpetas de "ruta_carpeta_bd_clasificadas":
+  mapeo_rutas_entrada_salida$ruta_salida %>%
+    dirname() %>%
+    unique() %>%
+    l_ply(dir.create)
+  
+  # Creando el código de Bash para realizar la copia de las bases
+  codigo_bash <- mapeo_rutas_entrada_salida %>%
+    mutate(
+      codigo = paste0('cp "', ruta_entrada, '" "', ruta_salida, '"')
+    ) %>%
+    '$'(codigo) 
+  
+  # Corriendo cada comando de Bash:
+  l_ply(codigo_bash, system)
 }
 
 ################################################################################
@@ -376,3 +471,12 @@ eliminar_muestras_duplicadas <- function(ruta_base_sqlite, ruta_carpeta_destino,
     stop("La base de datos no cuenta con un esquema soportado")
   }
 }
+
+# 1. Buscar bases en carpeta origen y guardarlas en "1_bases_agrupadas"
+# 2. Separar las bases en "1_bases_agrupadas" en distintas carpetas, de acuerdo
+# a su esquema con el fin de fusionarlas al mismo tiempo.
+# 3. Fusionar cada tipo de base.
+# 4. Migrar cada base fusionada al esquema v14.
+# 5. Fusionar todas las bases fusionadas.
+# 6. Eliminar duplicados
+# 7. Fusionar a la base de datos PostgreSQL.
