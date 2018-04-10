@@ -21,6 +21,7 @@ library("RSQLite")
 library("RPostgreSQL")
 library("plyr")
 library("dplyr")
+library("dbplyr")
 library("readr")
 library("readxl")
 
@@ -157,7 +158,7 @@ revisar_esquemas <- function(ruta_carpeta_entrada, ruta_carpeta_salida,
     mutate(
       codigo = paste0('cp "', ruta_entrada, '" "', ruta_salida, '"')
     ) %>%
-    '$'(codigo) 
+    '$'(codigo)
   
   # Corriendo cada comando de Bash:
   l_ply(codigo_bash, system)
@@ -166,7 +167,7 @@ revisar_esquemas <- function(ruta_carpeta_entrada, ruta_carpeta_salida,
   # ver el esquema de cada base en la carpeta de salida.
   revision_esquemas_carpeta_salida <-ldply(
     mapeo_rutas_entrada_salida$ruta_salida, function(ruta){
-      print(paste0("Leyendo base:", ruta))
+      print(paste0("Leyendo base: ", ruta))
       # Previniendo que truene si no puede leer la base de datos
       tryCatch(revisar_esquema(ruta),
         error = function(e){
