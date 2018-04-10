@@ -44,3 +44,6 @@ vignettes/*.pdf
 
 # System files
 *.DS_Store
+
+# Quitando archivos auxiliares de Excel:
+~$*.xlsx
