@@ -4,11 +4,9 @@
 # de poder acceder a ellas. De cada base copiada, revisar el esquema / versión del
 # cliente, etc... para saber qué versiones de las herramientas usar para el
 # proceso de integración.
-# 2. Crear manualmente carpetas de bases de datos que utilizarán las mismas
-# herramientas. Esto es manual, puesto que otorga mayor flexibilidad en casos
-# extremos (por ejemplo, no sabemos cómo vendrán los datos que entregará Belinda
-# de CONAFOR).
-# 4. Fusionar cada base de datos en la carpeta especificada, y enviar la base fusionada
+# 2. Separar las distintas bases en carpetas de acuerdo al fusionador que les
+# corresponde.
+# 4. Fusionar las bases en cada carpeta, y enviar la base fusionada
 # a una carpeta especificada (posiblemente una subcarpeta de la anterior).
 # 5. Enviar una copia de la base de datos a una carpeta específica, y eliminar los
 # duplicados de esta última.
@@ -126,8 +124,8 @@ revisar_esquema <- function(ruta_base){
 # revisar_esquema()
 
 revisar_esquemas <- function(ruta_carpeta_entrada, ruta_carpeta_salida,
-  nombre_carpeta_bd_agrupadas = "1_bases_agrupadas",
-  nombre_archivo_revision_bd = "archivo_revision_bd"
+  nombre_carpeta_bd_agrupadas = nombre_carpeta_bd_agrupadas,
+  nombre_archivo_revision_bd = nombre_archivo_revision_bd
   ){
   
   # Obteniendo las rutas de cada base en la carpeta de entrada
@@ -215,17 +213,17 @@ revisar_esquemas <- function(ruta_carpeta_entrada, ruta_carpeta_salida,
 # adecuadamente. Para ello se utilizará el archivo:
 # "ruta_archivo_esquemas_clientes_fusionadores"
 
-clasifica_bases <- function(
-  ruta_carpeta_trabajo,
-  nombre_carpeta_bd_agrupadas = "1_bases_agrupadas",
-  nombre_carpeta_bd_clasificadas = "2_bases_clasificadas",
-  nombre_archivo_revision_bd = "archivo_revision_bd",
+clasificar_bases <- function(
+  ruta_carpeta_trabajo = ruta_carpeta_salida,
+  nombre_carpeta_bd_agrupadas = nombre_carpeta_bd_agrupadas,
+  nombre_carpeta_bd_clasificadas = nombre_carpeta_bd_clasificadas,
+  nombre_archivo_revision_bd = nombre_archivo_revision_bd,
   ruta_archivo_esquemas_clientes_fusionadores = ruta_archivo_esquemas_clientes_fusionadores){
   
   # Obteniendo varias rutas que son necesarias
   ruta_carpeta_bd_agrupadas <- paste0(ruta_carpeta_trabajo, "/", nombre_carpeta_bd_agrupadas)
   ruta_carpeta_bd_clasificadas <- paste0(ruta_carpeta_trabajo, "/", nombre_carpeta_bd_clasificadas)
-  ruta_archivo_revision_bd <- paste0(ruta_carpeta_bd_agrupadas, "/", nombre_archivo_revision_bd)
+  ruta_archivo_revision_bd <- paste0(ruta_carpeta_bd_agrupadas, "/", nombre_archivo_revision_bd, ".csv")
   
   # Creando carpeta de bases de datos clasificadas:
   dir.create(ruta_carpeta_bd_clasificadas)
@@ -245,8 +243,7 @@ clasifica_bases <- function(
     mutate(
       ruta_entrada = ruta_salida,
       ruta_salida = paste0(ruta_carpeta_bd_clasificadas,
-        "/", fusionador_correspondiente,
-        "/", basename(ruta_entrada))
+        "/", fusionador_correspondiente, "/", basename(ruta_entrada))
     )
   
   # Creando las subcarpetas de "ruta_carpeta_bd_clasificadas":
