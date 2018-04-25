@@ -33,7 +33,8 @@ ruta_archivo_esquemas_clientes_fusionadores <-
 #######################
 
 # Ruta a la carpeta que contiene la aplicación de Web2py que contiene los clientes y
-# fusionadores nombrados como en el archivo anterior.
+# fusionadores nombrados como en el archivo de relación entre esquemas, clientes y
+# fusionadores.
 ruta_web2py <- paste0(ruta_dependencias, "/web2py")
 
 # Nombre de la carpeta donde se almacenarán las bases de datos fusionadas (tanto
