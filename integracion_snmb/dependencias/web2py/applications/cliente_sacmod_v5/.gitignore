@@ -1,0 +1,15 @@
+docs
+cache
+cron
+databases
+errors
+languages
+progress.log
+routes.example.py
+sessions
+uploads
+
+*.py[co]
+*.py.bak
+*.bak
+*.log

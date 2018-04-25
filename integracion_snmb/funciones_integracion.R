@@ -110,6 +110,10 @@ revisar_esquema <- function(ruta_base){
 #   donde se guardarán las bases con el fin de poder acceder a ellas (no en LUSTRE)
 # nombre_archivo_revision_bd: nombre del archivo que contiene la revisión de las
 #   bases de datos copiadas en la ruta anterior
+# ruta_archivo_esquemas_clientes_fusionadores: ruta al archivo de Excel que
+#   especifica los fusionadores correspondientes a cada esquema del cliente
+#   (el valor default está en el archivo de configuración)
+
 
 # Salidas:
 # 1. Copia los archivos con terminación ".sqlite" que se encuentran en una carpeta
@@ -119,13 +123,17 @@ revisar_esquema <- function(ruta_base){
 #   - ruta_salida
 #   - version_cliente
 #   - version_esquema
+#   - cliente_captura_correspondiente
+#   - fusionador_correspondiente
 
 # Dependencias:
+# ruta_archivo_esquemas_clientes_fusionadores
 # revisar_esquema()
 
 revisar_esquemas <- function(ruta_carpeta_entrada, ruta_carpeta_salida,
   nombre_carpeta_bd_agrupadas = nombre_carpeta_bd_agrupadas,
-  nombre_archivo_revision_bd = nombre_archivo_revision_bd
+  nombre_archivo_revision_bd = nombre_archivo_revision_bd,
+  ruta_archivo_esquemas_clientes_fusionadores = ruta_archivo_esquemas_clientes_fusionadores
   ){
   
   # Obteniendo las rutas de cada base en la carpeta de entrada
@@ -179,9 +187,23 @@ revisar_esquemas <- function(ruta_carpeta_entrada, ruta_carpeta_salida,
         })
     })
   
+  # Leyendo archivo de Excel con la información de cada cliente y fusionador
+  # correspondiente a cada tipo de base de datos SQLite
+  df_esquemas_clientes_fusionadores <- read_excel(ruta_archivo_esquemas_clientes_fusionadores)
+  
   # Generando el data frame resumen:
   df_archivo_revision_bd <- mapeo_rutas_entrada_salida %>%
-    inner_join(revision_esquemas_carpeta_salida, by = c("ruta_salida" = "ruta"))
+    inner_join(revision_esquemas_carpeta_salida, by = c("ruta_salida" = "ruta")) %>%
+    left_join(df_esquemas_clientes_fusionadores %>%
+        select(
+          version_esquema,
+          informacion_adicional,
+          cliente_captura_correspondiente,
+          fusionador_correspondiente
+          ), by = c(
+      "version_esquema",
+      "informacion_adicional"
+    ))
   
   # Guardando el data frame resumen en un CSV
   write_csv(df_archivo_revision_bd,
@@ -190,117 +212,60 @@ revisar_esquemas <- function(ruta_carpeta_entrada, ruta_carpeta_salida,
 
 ################################################################################
 
-# La siguiente función lee los registros del archivo "nombre_archivo_revision_bd"
-# y separa las bases dependiendo de la versión del fusionador que les corresponde.
+# La siguiente función fusiona las bases de datos que corresponden al mismo
+# cliente (para exportar la base como csv) y fusionador (para fusionar los csv's
+# en una nueva bd sqlite y exportarla, a su vez, como csv.
 
 # Entradas:
 # ruta_carpeta_trabajo: la ruta hacia la carpeta que contiene la carpeta
 #   "nombre_carpeta_bd_agrupadas", y donde se almacenará la carpeta
-#   "nombre_carpeta_bd_clasificadas"
+#   "nombre_carpeta_bd_fusionadas"
 # nombre_carpeta_bd_agrupadas: nombre de la carpeta que contiene las bases de
-#   datos agrupadas, así como el archivo de revisión.
-# nombre_carpeta_bd_clasificadas: nombre de la carpeta donde se almacenarán las
-#   bases de datos clasificadas.
-# nombre_archivo_revision_bd: nombre del archivo generado por la función
-#   "revisar_esquemas()", y que se encuentra almacenado en "nombre_carpeta_bd_agrupadas"
-#   ruta_archivo_esquemas_clientes_fusionadores: ruta al archivo de Excel que
-# especifica los fusionadores correspondientes a cada esquema del cliente
-# (el valor default está en el archivo de configuración)
-
-# Salidas:
-# Las bases de datos contenidas en la carpeta de revisión serán clasificadas en
-# carpetas de acuerdo al fusionador que les corresponde, en carpetas nombradas
-# adecuadamente. Para ello se utilizará el archivo:
-# "ruta_archivo_esquemas_clientes_fusionadores"
-
-clasificar_bases <- function(
-  ruta_carpeta_trabajo = ruta_carpeta_salida,
-  nombre_carpeta_bd_agrupadas = nombre_carpeta_bd_agrupadas,
-  nombre_carpeta_bd_clasificadas = nombre_carpeta_bd_clasificadas,
-  nombre_archivo_revision_bd = nombre_archivo_revision_bd,
-  ruta_archivo_esquemas_clientes_fusionadores = ruta_archivo_esquemas_clientes_fusionadores){
-  
-  # Obteniendo varias rutas que son necesarias
-  ruta_carpeta_bd_agrupadas <- paste0(ruta_carpeta_trabajo, "/", nombre_carpeta_bd_agrupadas)
-  ruta_carpeta_bd_clasificadas <- paste0(ruta_carpeta_trabajo, "/", nombre_carpeta_bd_clasificadas)
-  ruta_archivo_revision_bd <- paste0(ruta_carpeta_bd_agrupadas, "/", nombre_archivo_revision_bd, ".csv")
-  
-  # Creando carpeta de bases de datos clasificadas:
-  dir.create(ruta_carpeta_bd_clasificadas)
-  
-  # Leyendo los archivos necesarios:
-  df_archivo_revision_bd <- read_csv(ruta_archivo_revision_bd)
-  df_esquemas_clientes_fusionadores <- read_excel(ruta_archivo_esquemas_clientes_fusionadores)
-  
-  # Haciendo el join de ambos archivos, para asignar a cada cliente su fusionador
-  # correspondiente. Cabe destacar que serán ignorados aquellos archivos que no
-  # sean una base de datos proveniente de algún cliente de captura.
-  mapeo_rutas_entrada_salida <- df_archivo_revision_bd %>%
-    inner_join(df_esquemas_clientes_fusionadores, by = c(
-      "version_esquema",
-      "informacion_adicional"
-    )) %>%
-    mutate(
-      ruta_entrada = ruta_salida,
-      ruta_salida = paste0(ruta_carpeta_bd_clasificadas,
-        "/", fusionador_correspondiente, "/", basename(ruta_entrada))
-    )
-  
-  # Creando las subcarpetas de "ruta_carpeta_bd_clasificadas":
-  mapeo_rutas_entrada_salida$ruta_salida %>%
-    dirname() %>%
-    unique() %>%
-    l_ply(dir.create)
-  
-  # Creando el código de Bash para realizar la copia de las bases
-  codigo_bash <- mapeo_rutas_entrada_salida %>%
-    mutate(
-      codigo = paste0('cp "', ruta_entrada, '" "', ruta_salida, '"')
-    ) %>%
-    '$'(codigo) 
-  
-  # Corriendo cada comando de Bash:
-  l_ply(codigo_bash, system)
-}
-
-################################################################################
-
-# La siguiente función toma todas las bases de datos en una misma carpeta, revisa
-# que correspondan al mismo fusionador (utilizando el archivo especificado en:
-# config_integracion_snmb::ruta_archivo_esquemas_clientes_fusionadores
-# y en caso afirmativo, procede a fusionarlas utilizando el cliente y fusionador
-# correspondientes.
-
-# Entradas:
-# ruta_carpeta_entrada: ruta a la carpeta de entrada que contiene las bases de
-# datos a fusionar.
-# ruta_base_salida: nombre y ruta del archivo que contendrá la base de datos
-# fusionada.
-# ruta_archivo_excel: nombre y ruta del archivo de Excel que contiene la información
-# de clientes y fusionadores asociada a cada tipo de base de datos (por default se
-# utiliza el valor en "config.R")
+#   datos agrupadas, así como el archivo "nombre_archivo_revision_bd"
+# nombre_archivo_revision_bd: nombre sin terminación del archivo con la información
+#   del esquema correspondiente a cada base de datos.
+# nombre_carpeta_bd_fusionadas: el nombre de la carpeta donde se almacenarán
+#   las bases de datos fusionadas, en ambos formatos (csv y sqlite). Estas bases
+#   serán nombradas de acuerdo a su fusionador correspondiente.
 # ruta_web2py: nombre y ruta hacia la carpeta de Web2py que contiene las aplicaciones
-# instaladas (por default se utiliza el valor en "config.R")
+#   instaladas (por default se utiliza el valor en "config.R")
 
 # Salidas:
-# Base SQLite fusionada, con el nombre y ruta como especificadas en
-# "ruta_base_fusionada"
+# Para cada conjunto de bases correspondientes a un fusionador distinto, crea una
+# base de datos sqlite fusionada, su correspondiente csv, nombradas de acuerdo al
+# fusionador, y las guarda en "nombre_carpeta_bd_fusionadas".
 
 # Dependencias:
-# - "fusionar_bases/conglomerados_fototrampa.xlsx". Este archivo especifica qué
-# cliente de captura y fusionador corresponden a qué base de datos.
+# revisar_esquemas()
+# ruta_web2py
 
-# - "fusionar_bases/web2py". Web2py (modo desarrollador) que tiene
-# instaladas todas las aplicaciones de cliente y fusionador enlistadas en el
-# archivo: "fusionar_bases/conglomerados_fototrampa.xlsx" (con nombres idénticos)
-
-fusionar_bases <- function(ruta_carpeta_entrada, ruta_base_salida,
-  ruta_archivo_excel = ruta_archivo_esquemas_clientes_fusionadores,
-  ruta_web2py = ruta_web2py){
-
-  # Leyendo información de clientes y fusionadores del archivo de excel:
-  informacion_clientes_fusionadores <- read_excel(ruta_archivo_excel)
+fusionar_bases <- function(
+  ruta_carpeta_trabajo = ruta_carpeta_salida,
+  nombre_carpeta_bd_agrupadas = nombre_carpeta_bd_agrupadas,
+  nombre_archivo_revision_bd = nombre_archivo_revision_bd,
+  nombre_carpeta_bd_fusionadas = nombre_carpeta_bd_fusionadas){
   
+  # Leyendo archivo de revisión de las bases de datos agrupadas:
+  ruta_carpeta_bd_agrupadas <- paste0(ruta_carpeta_trabajo, "/", nombre_carpeta_bd_agrupadas)
+  ruta_archivo_revision_bd <- paste0(ruta_carpeta_bd_agrupadas, "/", nombre_archivo_revision_bd, ".csv")
+  df_archivo_revision_bd <- read_csv(ruta_archivo_revision_bd) %>%
+    # Filtrando archivos que no son bases de datos
+    filter(!is.na(fusionador_correspondiente))
+  
+  # Fusionando las bases de datos que corresponden al mismo fusionador, y guardando
+  # las fusiones (sqlite y csv) la carpeta correspondiente
+  dlply(df_archivo_revision_bd, .(fusionador_correspondiente), function(df_fusionador){
+    # Para cada base de datos que corresponde al mismo cliente y fusionador:
+    dlply(df, .(cliente_captura_correspondiente), function(df_fusionador_cliente){
+      a_ply(df_fusionador_cliente, 1, function(x){
+        # Seleccionando la ruta de la base de datos correspondiente al cliente de captura
+        ruta_base_datos <- x["ruta_salida"]
+        
+        
+      })
+    })
+  })
+
   # Obteniendo las rutas de cada base en la carpeta de entrada
   rutas_bases_sqlite <- list.files(
     ruta_carpeta_entrada,
