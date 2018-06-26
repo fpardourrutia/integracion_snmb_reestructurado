@@ -1,15 +1,17 @@
 ##### Ruta crítica:
 
 # 1. Copiar las bases de datos de una carpeta en LUSTRE a una externa, con el fin
-# de poder acceder a ellas. De cada base copiada, revisar el esquema / versión del
-# cliente, etc... para saber qué versiones de las herramientas usar para el
-# proceso de integración.
-# 2. Separar las distintas bases en carpetas de acuerdo al fusionador que les
-# corresponde.
-# 4. Fusionar las bases en cada carpeta, y enviar la base fusionada
-# a una carpeta especificada (posiblemente una subcarpeta de la anterior).
-# 5. Enviar una copia de la base de datos a una carpeta específica, y eliminar los
-# duplicados de esta última.
+# de poder acceder a ellas.
+# 2. De cada base copiada, revisar el esquema / versión del cliente, etc... para saber
+# qué versiones de las herramientas usar para el proceso de integración. Crear un
+# archivo csv que contenga dicha información para cada base de datos (registro).
+# 3. Fusionar las bases que corresponden a una misma versión del fusionador, enviar
+# cada una de esas bases fusionadas a una misma carpeta.
+# 5. Fusionar las bases fusionadas al mismo esquema (más reciente), obteniendo una
+# sóla base global correspondiente a la entrega en curso.
+# 6. Eliminar duplicados de dicha base global, tanto dentro de ella, como comparando
+# con la base final PostgreSQL.
+# 7. Fusionar dicha base global a la base final PostgreSQL.
 
 # Nota: todas las rutas utilizadas en este archivo serán relativas a este mismo.
 
